@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alfa vs Touch (MTC) — Available Numbers (Live)</title>
+<style>
+  :root { color-scheme: light; --line:#e4e6ea; --muted:#82878f; --ink:#1b1b1f; --accent:#1f2430; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:22px 24px 40px; font-family:"Segoe UI", system-ui, -apple-system, Arial, sans-serif; background:#f6f7f9; color:var(--ink); }
+  h1 { font-size:21px; margin:0 0 3px; }
+  .sub { color:#6b7078; font-size:12.5px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:999px; font-size:11.5px; font-weight:600; border:1px solid var(--line); background:#fff; }
+  .dot { width:7px; height:7px; border-radius:50%; background:#2bb673; box-shadow:0 0 0 3px rgba(43,182,115,.15); }
+  .dot.loading { background:#e0a400; box-shadow:0 0 0 3px rgba(224,164,0,.15); }
+  .dot.error { background:#e05252; box-shadow:0 0 0 3px rgba(224,82,82,.15); }
+  .cards { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 12px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 14px; min-width:132px; }
+  .card .k { font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:3px; }
+  .card .v { font-size:19px; font-weight:700; line-height:1.1; }
+  .card .v small { font-size:11px; font-weight:500; color:var(--muted); }
+  .card.gold { border-color:#e2bd47; background:#fffbeb; }
+  .card.gold .v { color:#96700a; font-family:ui-monospace, Consolas, monospace; }
+  .card.green .v { color:#1e7d4f; }
+  label.chk { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#4a4f57; user-select:none; cursor:pointer; }
+  .btn { border:1px solid #cfd3d8; background:#fff; border-radius:8px; padding:8px 12px; font-size:12.5px; font-weight:600; cursor:pointer; color:#333; }
+  .btn:hover { background:#f2f4f6; }
+  .btn:disabled { opacity:.55; cursor:default; }
+  .err { background:#fdecec; border:1px solid #f3c0c0; color:#8f2b2b; border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:10px; display:none; }
+  .recent { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+  .recent h2 { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 7px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; border:1px solid #cfe6d8; background:#f0faf4; color:#1e6b45; border-radius:999px; padding:3px 9px; font-size:12px; font-family:ui-monospace, Consolas, monospace; }
+  .chip b { font-size:9.5px; font-family:"Segoe UI", sans-serif; font-weight:700; letter-spacing:.04em; padding:1px 5px; border-radius:999px; background:#d8f0e2; }
+  .chip .t { font-family:"Segoe UI", sans-serif; font-size:10.5px; color:#5a8a6e; }
+  .chip.is-missing,.chip.is-unknown { border-color:#dbe4ef; background:#f2f6fc; color:#314660; }
+  .chip.is-missing b,.chip.is-unknown b { background:#e4ebf4; }
+  .chip .availability { font-family:"Segoe UI",sans-serif; font-size:11px; font-weight:600; }
+  .chips .empty { font-size:12px; color:var(--muted); }
+  .tablewrap { background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; max-width:860px; }
+  table { border-collapse:collapse; width:100%; }
+  thead th { position:sticky; top:0; background:var(--accent); color:#fff; font-size:11.5px; letter-spacing:.05em; text-transform:uppercase; padding:10px 14px; text-align:left; z-index:2; font-weight:600; }
+  thead th:first-child { border-right:1px solid #3a4150; width:50%; }
+  tbody td { padding:7px 14px; font-family:ui-monospace, Consolas, "Courier New", monospace; font-size:15px; letter-spacing:.05em; border-bottom:1px solid #eff1f3; white-space:nowrap; }
+  tbody td:first-child { border-right:1px solid #eff1f3; }
+  tbody tr:nth-child(even) { background:#fafbfc; }
+  tbody tr:hover { background:#f4f7fb; }
+  tbody tr.win td { background:#fff6d6; }
+  tbody tr.win td:first-child::after { content:" ★"; color:#d4a000; }
+  tbody tr.fresh td { animation:flash 2.4s ease-out 1; }
+  @keyframes flash { 0% { background:#c9f3d8; } 100% { background:transparent; } }
+  tbody tr.newrow td { box-shadow:inset 3px 0 0 #2bb673; }
+  mark { background:#ffe58a; color:inherit; padding:1px 2px; border-radius:3px; }
+  .legend { font-size:11.5px; color:var(--muted); margin-top:9px; line-height:1.6; }
+  .legend .k { display:inline-block; width:9px; height:9px; border-radius:2px; vertical-align:middle; margin-right:4px; }
+  .footer { font-size:11.5px; color:#9aa0a7; margin-top:16px; max-width:860px; line-height:1.6; }
+  .toast { position:fixed; right:20px; bottom:20px; background:#1f2430; color:#fff; padding:10px 16px; border-radius:10px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.2); opacity:0; transform:translateY(10px); transition:.25s; pointer-events:none; }
+  .toast.show { opacity:1; transform:none; }
+  .results-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(235px,300px); gap:16px; max-width:1180px; align-items:start; }
+  .top-numbers { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .top-numbers h2 { margin:0 0 10px; font-size:1rem; }
+  .top-numbers ol { margin:12px 0 0; padding-left:25px; }
+  .top-numbers li { padding:6px 0; }
+  .top-numbers small { display:block; color:#4b5563; }
+  @media(max-width:740px) { .results-layout { grid-template-columns:1fr; } .top-numbers { grid-row:1; } }
+  .results-layout { grid-template-columns:minmax(0,1fr) minmax(380px,470px); }
+  .score-table { width:100%; font-size:.82rem; border-collapse:collapse; }
+  .score-table th,.score-table td { padding:6px; vertical-align:top; text-align:left; }
+  .score-table td:nth-child(2) { white-space:nowrap; }
+  @media(max-width:900px) { .results-layout { grid-template-columns:minmax(0,1fr); } .top-numbers { grid-row:1; overflow:auto; } }
+  :root { --ink:#17233a; --accent:#eaf1fb; --muted:#4d5e75; --line:#dbe4ef; }
+  body { max-width:1480px; margin:auto; padding:clamp(14px,3vw,40px); background:#f2f6fc; line-height:1.45; }
+  .page-header { display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px; align-items:center; margin-bottom:14px; }
+  .page-header h1 { font-size:clamp(26px,4vw,38px); letter-spacing:-.035em; }
+  .page-header p,.help { margin:4px 0 0; color:var(--muted); font-size:.88rem; }
+  h2,.recent h2 { font-size:1rem; color:var(--ink); margin:0 0 6px; text-transform:none; letter-spacing:0; }
+  .card,.recent,.tablewrap,.top-numbers { border-radius:14px; box-shadow:0 2px 8px #1834500a; }
+  .card { flex:1 1 145px; padding:12px 15px; }
+  #refreshBtn { background:#1746a2; color:white; border-color:transparent; padding:11px 16px; font-size:.95rem; }
+  #refreshBtn:hover { background:#123779; }
+  select { min-height:38px; border:1px solid #aebed3; border-radius:8px; background:#fff; color:var(--ink); padding:6px 8px; }
+  .top-numbers select { margin:3px 5px 8px 0; max-width:100%; }
+  :is(button,select,summary,input):focus-visible { outline:2px solid #1746a2; outline-offset:2px; }
+  .results-layout { max-width:none; grid-template-columns:minmax(0,1fr) minmax(395px,1.12fr); }
+  .tablewrap { max-width:none; }
+  .table-order { margin:0; padding:0 14px 12px; }
+  .table-title,#noMatches { padding:12px 14px; }
+  thead th { background:var(--accent); color:#223a5c; }
+  thead th:first-child { border-right:1px solid var(--line); }
+  .score-table th:first-child { width:auto; }
+  .score-table td { font-family:inherit; font-size:.82rem; letter-spacing:normal; white-space:normal; }
+  .score-table td:nth-child(2),.score-table td:nth-child(3) { font-weight:650; }
+  .score-table td:nth-child(2) { white-space:normal; min-width:86px; }
+  .score-table td:nth-child(3) { color:#1746a2; white-space:nowrap; }
+  .legend,.footer { color:var(--muted); }
+  @media(max-width:900px) { .results-layout { grid-template-columns:minmax(0,1fr); } .top-numbers { grid-row:1; } }
+  @media(prefers-reduced-motion:reduce) { tbody tr.fresh td { animation:none; } }
+  .number-categories { display:flex; gap:8px; margin-bottom:12px; }
+  .number-categories [aria-pressed="true"] { background:#eaf1fb; color:#1746a2; border-color:#1746a2; }
+  .favorites-panel { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px; }
+  .favorites-panel summary { cursor:pointer; font-weight:650; }
+  .new-badge { display:inline-block; margin-left:4px; background:#d5f4e5; color:#175745; border-radius:6px; padding:1px 5px; font-size:.72rem; }
+
+  .ranked-number { display:inline-block; white-space:nowrap; font-family:ui-monospace,Consolas,monospace; }
+  .ranked-operator { color:#4d5e75; font-weight:400; }
+  .digit-block { background:#dbeafe; color:#163a72; }
+  .digit-group { background:#ede3ff; color:#522b78; }
+  .digit-sequence { background:#d6f4e8; color:#155845; }
+  .digit-repeat { background:#ffe9af; color:#663d08; }
+  .digit-pair-sequence { background:#bff4f5; color:#075866; }
+  .digit-adjacent { background:#ffe0c2; color:#7b3417; }
+  .digit-prefix { background:#ffe0e9; color:#7d254b; }
+  #tbody span[class^="digit-"] { border-radius:3px; padding-block:2px; }
+  .winner-source { margin-top:5px; color:#624c16; font-size:.8rem; font-weight:600; }
+  .winner-link { color:#1746a2; font-size:.8rem; text-underline-offset:2px; }
+  .source-check { display:block; margin-top:4px; font-size:.72rem; font-weight:500; color:#425978; text-transform:none; letter-spacing:0; }
+  #tbody td[id] { scroll-margin-top:4rem; }
+  #tbody td:target { outline:2px solid #1746a2; outline-offset:-2px; }
+</style>
+</head>
+<body>
+  <header class="page-header"><div><h1>Find a mobile number</h1><p>Compare available numbers from Alfa and Touch.</p></div><button class="btn" id="refreshBtn" type="button">Update availability</button></header>
+  <nav class="number-categories" aria-label="Number category">
+    <button class="btn" id="regularTab" type="button" aria-pressed="true">Regular</button>
+    <button class="btn" id="chromeTab" type="button" aria-pressed="false">Chrome</button>
+  </nav>
+  <div class="sub">
+    <span class="pill"><span class="dot" id="dot"></span><span id="statusTxt">Live</span></span>
+    <span id="updatedTxt">loading…</span>
+    <span id="nextTxt" role="timer"></span>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="k">Alfa numbers</div><div class="v" id="cAlfa">–</div></div>
+    <div class="card"><div class="k">Touch / MTC numbers</div><div class="v" id="cTouch">–</div></div>
+    <div class="card green"><div class="k">New since tracking</div><div class="v"><span id="cNewAlfa">0</span> <small>Alfa</small> · <span id="cNewTouch">0</span> <small>Touch</small></div></div>
+    <div class="card gold"><div class="k">Most repeated digits</div><div class="v" id="cGold">–</div><div class="winner-source" id="cGoldSource" hidden></div><a class="winner-link" id="cGoldLink" hidden>Show in Available numbers</a></div>
+  </div>
+
+  <div class="err" id="errBox"></div>
+  <div class="recent">
+    <h2>First seen in the last 24 hours</h2>
+    <div class="chips" id="recentChips"><span class="empty">No numbers first seen in the last 24 hours.</span></div>
+  </div>
+
+  <details class="favorites-panel" id="favoritesPanel">
+    <summary id="favoritesSummary">Favorites</summary>
+    <ul id="favoritesList"></ul>
+  </details>
+  <div class="results-layout">
+  <div class="tablewrap">
+    <h2 class="table-title">Available numbers</h2>
+    <p class="help table-order">Distinctive patterns first for each operator</p>
+    <table id="tbl">
+      <thead><tr><th scope="col">Alfa <small class="source-check" id="alfaSourceCheck"></small></th><th scope="col">Touch / MTC <small class="source-check" id="touchSourceCheck"></small></th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <p id="noMatches" class="help" hidden>No available numbers to display.</p>
+  </div>
+
+  <aside class="top-numbers">
+    <h2>Top 50</h2>
+    <button class="btn" type="button" id="reviewNew" hidden></button>
+    <p id="topEmpty" hidden>No numbers meet the ranking criteria.</p>
+    <p id="topScope"></p><small>Full patterns first, then strong consecutive patterns, then scattered repeats. Scores break ties within each group.</small><table class="score-table"><thead><tr><th>Rank</th><th>Number</th><th>Score</th><th>Reason and strongest feature</th></tr></thead><tbody id="topList"></tbody></table>
+  </aside>
+  </div>
+  <div class="legend">
+    <span class="k" style="background:#2bb673"></span> new number since tracking started </div>
+
+  <div class="footer" id="footer"></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+const localFile = location.protocol === 'file:';
+const mountedUnderNumbers = location.pathname === '/numbers' || location.pathname?.startsWith('/numbers/');
+const numbersEndpoint = mountedUnderNumbers ? '/numbers/api/numbers' : '/api/numbers';
+const el = id => document.getElementById(id);
+const S = {
+  payload: emptyInventory(),
+  newSet: new Set(),   // src:number, added within 24h
+  flashSet: new Set(), // src:number, appeared in this refresh
+  loading: false
+};
+
+function consecutivePairs(tail) {
+  const pairs = tail.match(/\d{2}/g);
+  if (pairs?.length !== 3 || tail.length !== 6) return false;
+  const [first, second, third] = pairs.map(Number);
+  return Math.abs(second - first) === 1 && third - second === second - first;
+}
+function displayGroups(number) {
+  if (!/^\d{8}$/.test(number)) return [number];
+  const prefix = number.slice(0, 2);
+  const tail = number.slice(2);
+  const structure = fullPattern(tail)?.id;
+  if (consecutivePairs(tail) || structure === 'alternating' || structure === 'threePairs') {
+    return [prefix, ...tail.match(/.{2}/g)];
+  }
+  if (structure === 'doubleBlock' || structure === 'twoTriples') {
+    return [prefix, tail.slice(0, 3), tail.slice(3)];
+  }
+  const ranges = [...tail.matchAll(/(\d)\1{2,}/g)].map(match => ({ index: match.index, length: match[0].length }));
+  const series = longestSeries(tail);
+  if (series.length >= 4) ranges.push({ index: tail.indexOf(series), length: series.length });
+  const repeatedPrefix = prefix.repeat(3);
+  for (const fragment of [repeatedPrefix, prefix.repeat(2)]) {
+    const index = tail.indexOf(fragment);
+    if (index >= 0) {
+      ranges.push({ index, length: fragment.length });
+      break;
+    }
+  }
+  const best = ranges.sort((a, b) => b.length - a.length || a.index - b.index)[0];
+  if (!best) {
+    const prefixAt = tail.indexOf(prefix);
+    const pairAt = [...tail].findIndex((digit, index) => digit === tail[index + 1]);
+    if (series.length === 3) {
+      const index = tail.indexOf(series);
+      if (index !== 0 && index !== 3) {
+        return [prefix, tail.slice(0, index), series, tail.slice(index + 3)].filter(Boolean);
+      }
+    }
+    const index = prefixAt >= 0 ? prefixAt : pairAt;
+    if (index >= 0) {
+      return [prefix, tail.slice(0, index), tail.slice(index, index + 2), tail.slice(index + 2)].filter(Boolean);
+    }
+    return [prefix, tail.slice(0, 3), tail.slice(3)];
+  }
+  return [prefix, tail.slice(0, best.index), tail.slice(best.index, best.index + best.length),
+    tail.slice(best.index + best.length)].filter(Boolean);
+}
+
+function fmt(number) {
+  return displayGroups(number).join(' ');
+}
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function timeAgo(iso){
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (d < 60) return 'just now';
+  if (d < 3600) return Math.floor(d/60) + ' min ago';
+  if (d < 86400) return Math.floor(d/3600) + ' h ago';
+  return Math.floor(d/86400) + ' d ago';
+}
+function clock(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+const patterns = {
+  repeat: /([0-9])\1{2,}/,
+  blocks: /([0-9]{3})\1|([0-9])(?!\2)([0-9])\2\3/,
+  pairs: /([0-9])\1(?!\1)([0-9])\2/,
+  sequence: /0123|1234|2345|3456|4567|5678|6789|9876|8765|7654|6543|5432|4321|3210/,
+  mirror: /^([0-9])([0-9])([0-9])\3\2\1$/
+};
+const fullPatterns = [
+  { id: 'alternating', regex: /^(\d)(?!\1)(\d)(?:\1\2){2}$/, label: 'Alternating digits', points: 14 },
+  { id: 'doubleBlock', regex: /^(\d{3})\1$/, label: 'Repeated 3-digit block', points: 12 },
+  { id: 'threePairs', regex: /^(\d)\1(?!\1)(\d)\2(?!\1|\2)(\d)\3$/, label: 'Three distinct pairs', points: 12 },
+  { id: 'twoTriples', regex: /^(\d)\1{2}(?!\1)(\d)\2{2}$/, label: 'Two distinct triples', points: 14 }
+];
+
+function fullPattern(tail) {
+  if (new Set(tail).size < 2) return undefined;
+  return fullPatterns.find(pattern => pattern.regex.test(tail));
+}
+
+const weights = { repeat: 4, blocks: 5, pairs: 3, sequence: 4, mirror: 6 };
+
+function memorableScore(tail) {
+  let score = 6 - new Set(tail).size;
+  for (const [name, pattern] of Object.entries(patterns)) {
+    if (pattern.test(tail)) score += weights[name];
+  }
+  return score;
+}
+
+function statsOf(n){
+  const cnt = {};
+  for (const c of n) cnt[c] = (cnt[c] || 0) + 1;
+  let maxFreq = 0, maxDigit = '', reps = 0;
+  for (const [d, k] of Object.entries(cnt)) {
+    if (k > maxFreq) { maxFreq = k; maxDigit = d; }
+    reps += k - 1;
+  }
+  let run = 1, mr = 1;
+  for (let i = 1; i < n.length; i++) {
+    if (n[i] === n[i-1]) { run++; if (run > mr) mr = run; } else run = 1;
+  }
+  return { n, maxFreq, maxDigit, reps, distinct: Object.keys(cnt).length, run: mr };
+}
+
+function longestSeries(tail) {
+  let best = '';
+  for (let start = 0; start < tail.length; start++) {
+    for (const step of [1, -1]) {
+      let end = start + 1;
+      while (end < tail.length && Number(tail[end]) - Number(tail[end - 1]) === step) end++;
+      if (end - start > best.length) best = tail.slice(start, end);
+    }
+  }
+  return best;
+}
+
+function prefixMatches(number) {
+  const prefix = number.slice(0, 2);
+  const tail = number.slice(2);
+  let count = 0;
+  for (let i = 0; i < tail.length - 1; i++) {
+    if (tail.startsWith(prefix, i)) {
+      count++;
+      i++;
+    }
+  }
+  return count;
+}
+
+function assessNumber(number) {
+  const tail = number.slice(2);
+  const stats = statsOf(tail);
+  const whole = statsOf(number);
+  const series = longestSeries(number);
+  const structure = fullPattern(tail);
+  const pairSequence = consecutivePairs(tail);
+  const adjacentBlocks = tail.length === 6 && Math.abs(Number(tail.slice(0, 3)) - Number(tail.slice(3))) === 1;
+  const prefixCount = prefixMatches(number);
+  const prefixDigits = [...new Set(number.slice(0, 2))].filter(digit => [...tail].filter(value => value === digit).length >= 2);
+  const prefixBonus = Math.min(24, 10 * prefixCount);
+  const alignmentBonus = prefixDigits.length * 4;
+  const mirror = number === [...number].reverse().join('') || patterns.mirror.test(tail);
+  const endRun = tail.match(/(\d)\1*$/)[0].length;
+  const endSeries = [5, 4].find(length => longestSeries(tail.slice(-length)).length === length) || 0;
+  const key = [structure?.id || '', stats.maxFreq, stats.run, series.length >= 4 ? series.length : 0, mirror, adjacentBlocks, pairSequence, Boolean(prefixCount)].join('|');
+  const repetition = Math.min(27, 5 * (stats.maxFreq - 1) + 2 * (stats.run - 1) + 2 * (whole.maxFreq - stats.maxFreq));
+  const design = Math.min(28, Math.max(structure ? 23 : 0, adjacentBlocks ? 20 : 0, pairSequence ? 23 : 0, 6 * Math.max(0, series.length - 2), mirror ? 24 : 0, patterns.blocks.test(tail) ? 12 : 0));
+  const ending = Math.max(endRun >= 3 ? 2 * endRun : 0, 2 * endSeries, structure || mirror ? 8 : 0);
+  const recall = Math.min(21, 3 * (6 - stats.distinct) + (structure || adjacentBlocks || pairSequence || series.length >= 5 || mirror ? 10 : 0) + Math.min(3, prefixCount));
+  const features = [
+    [repetition, stats.maxDigit + ' × ' + stats.maxFreq + ' after prefix', stats.maxFreq >= 3],
+    [design, (structure?.id === 'doubleBlock' ? 'Repeated block ' + tail.slice(0, 3) + ' ' + tail.slice(3) : structure?.label) || (mirror ? 'Mirror symmetry' : (series.length >= 4 ? 'Sequence ' + series : 'Prefix repeats')), Boolean(structure || mirror || series.length >= 4 || prefixCount)],
+    [23, "Consecutive pairs " + tail.match(/.{2}/g).join(" / "), pairSequence],
+    [20, "Consecutive blocks " + tail.slice(0, 3) + " / " + tail.slice(3), adjacentBlocks],
+    [ending, 'Memorable ending ' + tail.slice(-Math.max(endSeries, endRun)), endRun >= 3 || endSeries >= 4]
+  ].filter(feature => feature[2]).sort((a, b) => b[0] - a[0]).map(feature => feature[1]);
+  return { number, stats, series, structure, mirror, adjacentBlocks, pairSequence, prefixCount, prefixBonus, prefixDigits, alignmentBonus, key, features, base: repetition + design + ending + recall + prefixBonus + alignmentBonus };
+}
+
+const TOP_NUMBERS_LIMIT = 50;
+
+function rankingPriority(row) {
+  const tail = row.number.slice(2);
+  const prefix = row.number.slice(0, 2);
+  const prefixCompletesPattern = row.number === prefix.repeat(4) ||
+    row.series.length === row.number.length || row.number === [...row.number].reverse().join('');
+  const complete = row.stats.run === 6 || longestSeries(tail).length === 6 ||
+    row.structure || row.mirror || row.adjacentBlocks || row.pairSequence;
+  const pairedEnding = /^(\d)\1{3}(?!\1)(\d)\2$/.test(tail);
+  const consecutive = row.stats.run >= 3 || row.series.length >= 4;
+  if (complete || prefixCompletesPattern) {
+    return {
+      group: 3,
+      label: 'Full-number pattern',
+      extra: prefixCompletesPattern ? 12 : 0,
+      reason: prefixCompletesPattern ? 'Prefix continues the pattern (+12 before cap)' : ''
+    };
+  }
+  if (consecutive) {
+    return {
+      group: 2,
+      label: pairedEnding ? 'Four in a row with a paired ending' : 'Strong consecutive pattern',
+      extra: pairedEnding ? 6 : 0,
+      reason: pairedEnding ? 'Paired ending ' + tail.slice(-2) + ' (+6 before cap)' : ''
+    };
+  }
+  if (row.stats.maxFreq >= 3) return { group: 1, label: 'Scattered repetition', extra: 0, reason: '' };
+  return null;
+}
+
+function rankNumbers(alfa, touch, inventory = { alfa, touch }) {
+  const frequencies = new Map();
+  for (const number of [...inventory.alfa, ...inventory.touch]) {
+    const { key } = assessNumber(number);
+    frequencies.set(key, (frequencies.get(key) || 0) + 1);
+  }
+  const rows = [];
+  for (const [operator, numbers] of [['Alfa', alfa], ['Touch', touch]]) {
+    for (const number of numbers) {
+      const row = assessNumber(number);
+      const priority = rankingPriority(row);
+      if (!priority) continue;
+      const rarity = Math.max(0, 12 - Math.round(3 * Math.log2(frequencies.get(row.key) || 1)));
+      const rawScore = row.base + rarity + priority.extra;
+      rows.push({ ...row, operator, rarity, priority, rawScore, score: Math.min(100, rawScore) });
+    }
+  }
+  return rows.sort((a, b) => {
+    return b.priority.group - a.priority.group || b.score - a.score ||
+      b.priority.extra - a.priority.extra || b.rarity - a.rarity || b.rawScore - a.rawScore ||
+      a.number.localeCompare(b.number);
+  }).slice(0, TOP_NUMBERS_LIMIT);
+}
+
+function numberKey(categoryName, source, number) {
+  return [categoryName, source.toLowerCase(), number].join(':');
+}
+
+function readPersonalLists() {
+  try {
+    return JSON.parse(localStorage.getItem('alfa-touch-personal-lists') || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+const personalLists = readPersonalLists();
+const favorites = new Map(Object.entries(personalLists.favorites || {}));
+const pendingNew = new Set(personalLists.pendingNew || []);
+const removedHistory = new Map(Object.entries(personalLists.removedHistory || {}));
+const REMOVAL_HISTORY_LIMIT = 100;
+
+function savePersonalLists() {
+  try {
+    localStorage.setItem('alfa-touch-personal-lists', JSON.stringify({
+      favorites: Object.fromEntries(favorites), pendingNew: [...pendingNew], removedHistory: Object.fromEntries(removedHistory)
+    }));
+  } catch {
+    // The current tab can still use these lists when browser storage is unavailable.
+  }
+}
+
+function recordRemovals(payload) {
+  for (const source of ['alfa', 'touch']) {
+    const missing = payload.justRemoved?.[source];
+    if (!Array.isArray(missing)) continue;
+    const time = payload.checkedAt?.[source] || new Date().toISOString();
+    for (const number of missing) {
+      const key = numberKey(category, source, number);
+      removedHistory.delete(key);
+      removedHistory.set(key, { time, returned: false });
+    }
+    const available = new Set(payload.numbers[source]);
+    for (const [key, entry] of removedHistory) {
+      const [kind, operator, number] = key.split(':');
+      if (kind === category && operator === source && available.has(number)) entry.returned = true;
+    }
+  }
+  const keys = [...removedHistory.keys()].filter(key => key.startsWith(category + ':'));
+  for (const key of keys.slice(0, Math.max(0, keys.length - REMOVAL_HISTORY_LIMIT))) removedHistory.delete(key);
+}
+
+function recordInventoryChanges(payload) {
+  recordRemovals(payload);
+  const { alfa, touch } = payload.numbers;
+  for (const row of rankNumbers(alfa, touch)) {
+    const source = row.operator.toLowerCase();
+    if (payload.justAdded?.[source]?.includes(row.number)) pendingNew.add(numberKey(category, source, row.number));
+  }
+  for (const [key, entry] of favorites) {
+    const [kind, source, number] = key.split(':');
+    if (kind !== category || payload.justRemoved?.[source] == null) continue;
+    entry.status = payload.numbers[source].includes(number) ? 'Listed at last check' : 'No longer listed';
+  }
+  savePersonalLists();
+}
+
+function renderFavorites() {
+  const list = el('favoritesList');
+  list.replaceChildren();
+  el("favoritesPanel").hidden = favorites.size === 0;
+  el('favoritesSummary').textContent = 'Favorites (' + favorites.size + ')';
+  for (const [key, entry] of favorites) {
+    const [kind, source, number] = key.split(':');
+    const item = document.createElement('li');
+    item.textContent = [fmt(number), source === 'alfa' ? 'Alfa' : 'Touch', kind === 'chrome' ? 'Chrome' : 'Regular', entry.status].join(' · ');
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn';
+    remove.textContent = 'Remove';
+    remove.setAttribute('aria-label', 'Remove favorite ' + fmt(number));
+    remove.addEventListener('click', () => {
+      favorites.delete(key);
+      savePersonalLists();
+      renderFavorites();
+    });
+    item.append(' ', remove);
+    list.append(item);
+  }
+}
+
+function renderRankedNumber(row) {
+  const number = document.createElement("span");
+  number.className = "ranked-number";
+  number.textContent = fmt(row.number);
+  return number;
+}
+
+function renderTopNumbers(alfa, touch) {
+  const rows = rankNumbers(alfa, touch, S.payload.numbers);
+  el('topScope').textContent = rows.length < TOP_NUMBERS_LIMIT ? rows.length + ' numbers meet the ranking criteria.' : '';
+  const list = el('topList');
+  const unseen = [...pendingNew].filter(key => key.startsWith(category + ':')).length;
+  el('reviewNew').hidden = !unseen;
+  el('reviewNew').textContent = 'Mark new numbers as reviewed (' + unseen + ')';
+  list.replaceChildren();
+  el('topEmpty').hidden = rows.length > 0;
+  rows.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    const [strongest, ...reasons] = row.features;
+    if (row.priority.reason) reasons.push(row.priority.reason);
+    if (row.prefixCount) reasons.push('Prefix ' + row.number.slice(0, 2) + ' repeats x' + row.prefixCount + ' (+' + row.prefixBonus + ' before cap)');
+    if (row.alignmentBonus) reasons.push('Repeated prefix digits: ' + row.prefixDigits.join(', ') + ' (+' + row.alignmentBonus + ' before cap)');
+    if (row.rarity >= 9) reasons.push('Rare in these lists');
+    for (const value of [index + 1, fmt(row.number) + ' · ' + row.operator, row.score + '/100', [row.priority.label, ...(strongest ? ['Strongest: ' + strongest] : []), ...reasons].join(' · ')]) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      tr.append(cell);
+    }
+    const key = numberKey(category, row.operator, row.number);
+    const operator = document.createElement('small');
+    operator.className = 'ranked-operator';
+    operator.textContent = row.operator;
+    tr.children[1].replaceChildren(renderRankedNumber(row), operator);
+    if (pendingNew.has(key)) {
+      const badge = document.createElement("span");
+      badge.className = "new-badge";
+      badge.textContent = "New";
+      tr.children[1].append(badge);
+    }
+    list.append(tr);
+  });
+}
+
+function pickWinner(alfa, touch){
+  const all = [...alfa.map(n => ({ src:'alfa', ...statsOf(n) })), ...touch.map(n => ({ src:'touch', ...statsOf(n) }))];
+  all.sort((a,b) => b.maxFreq - a.maxFreq || b.reps - a.reps || b.run - a.run);
+  return all[0] || null;
+}
+
+function numberCellId(source, number) {
+  return 'available-' + source + '-' + number;
+}
+
+function sourceCheckLabel(payload, source) {
+  const time = payload.checkedAt?.[source];
+  if (!time) return 'Not checked yet';
+  const label = Array.isArray(payload.justRemoved?.[source]) ? 'Fetched from operator' : 'Saved from last successful check';
+  return label + ' · ' + new Date(time).toLocaleDateString() + ' ' + clock(time);
+}
+
+function recentNumberStatus(entry, payload) {
+  if (!payload.checkedAt?.[entry.src]) return { css: 'is-unknown', label: 'Availability not checked' };
+  return payload.numbers[entry.src].includes(entry.n)
+    ? { css: '', label: 'Listed at last check' }
+    : { css: 'is-missing', label: 'No longer listed' };
+}
+
+function render(){
+  const p = S.payload;
+  if (!p) return;
+
+  for (const [source, id] of [['alfa', 'cAlfa'], ['touch', 'cTouch']]) {
+    el(id).textContent = p.checkedAt?.[source] ? p.numbers[source].length : '–';
+  }
+  el('cNewAlfa').textContent = p.totalsNew.alfa;
+  el('cNewTouch').textContent = p.totalsNew.touch;
+
+  const winner = pickWinner(p.numbers.alfa, p.numbers.touch);
+  el('cGold').textContent = winner ? fmt(winner.n) : '–';
+  const winnerLink = el('cGoldLink');
+  winnerLink.hidden = !winner;
+  if (winner) winnerLink.href = '#' + numberCellId(winner.src, winner.n);
+  else winnerLink.removeAttribute('href');
+  for (const source of ['alfa', 'touch']) {
+    el(source + 'SourceCheck').textContent = sourceCheckLabel(p, source);
+  }
+  const winnerSource = el('cGoldSource');
+  winnerSource.hidden = !winner;
+  winnerSource.textContent = winner ? (winner.src === 'alfa' ? 'Alfa' : 'Touch') + ' / ' + (category === 'chrome' ? 'Chrome' : 'Regular') : '';
+  el('cGold').title = winner ? ('Most repeated: digit ' + winner.maxDigit + ' ×' + winner.maxFreq + ' (' + (winner.src === 'alfa' ? 'Alfa' : 'Touch') + ')') : '';
+
+  el('updatedTxt').textContent = ['alfa', 'touch'].map(source => {
+    const name = source === 'alfa' ? 'Alfa' : 'Touch';
+    const time = p.checkedAt?.[source];
+    return name + ' · ' + (time ? 'last checked ' + new Date(time).toLocaleDateString() + ' ' + clock(time) : 'not checked yet');
+  }).join(' | ');
+  el('footer').textContent = localFile ? 'Start the local service to load numbers from Alfa and Touch.' : 'Checks Alfa and Touch every 30 seconds while this page is open.';
+  const errBox = el('errBox');
+  errBox.textContent = p.errors?.length ? 'Could not refresh: ' + p.errors.join(' · ') + '. Showing the last available list for the affected operator.' : '';
+  errBox.style.display = p.errors?.length ? 'block' : 'none';
+
+  // recent chips
+  const chips = el('recentChips');
+  if (p.recentAdditions && p.recentAdditions.length) {
+    chips.innerHTML = p.recentAdditions.slice(0, 10).map(entry => {
+      const status = recentNumberStatus(entry, p);
+      return '<span class="chip ' + status.css + '">' + esc(fmt(entry.n)) +
+        '<b>' + (entry.src === 'alfa' ? 'ALFA' : 'TOUCH') + '</b>' +
+        '<span class="t">First seen ' + timeAgo(entry.t) + '</span>' +
+        '<span class="availability">' + status.label + '</span></span>';
+    }).join('');
+  } else {
+    chips.innerHTML = '<span class="empty">No numbers first seen in the last 24 hours.</span>';
+  }
+
+  // sets
+  S.newSet = new Set([...(p.recentAdditions || [])].map(a => a.src + ':' + a.n));
+  S.flashSet = new Set([...(p.justAdded?.alfa || []).map(n => 'alfa:' + n), ...(p.justAdded?.touch || []).map(n => 'touch:' + n)]);
+
+  renderRows();
+}
+
+function availableNumberHTML(number) {
+  const row = assessNumber(number);
+  const colors = Array(8).fill('');
+  function paint(start, length, color) {
+    for (let index = start; index < start + length; index++) colors[index] ||= color;
+  }
+  if (row.pairSequence) paint(2, 6, 'pair-sequence');
+  if (row.structure) {
+    const size = { alternating: 2, doubleBlock: 3, threePairs: 2, twoTriples: 3 }[row.structure.id];
+    for (let index = 2; index < 8; index += size) {
+      paint(index, size, row.structure.id !== 'doubleBlock' && ((index - 2) / size) % 2 ? 'group' : 'block');
+    }
+  } else if (row.mirror) {
+    const start = number === [...number].reverse().join('') ? 0 : 2;
+    for (let index = start; index < (8 + start) / 2; index++) {
+      const color = (index - start) % 2 ? 'group' : 'block';
+      paint(index, 1, color);
+      paint(7 + start - index, 1, color);
+    }
+  }
+  if (row.adjacentBlocks) paint(2, 6, 'adjacent');
+  if (row.series.length >= 4) paint(number.indexOf(row.series), row.series.length, 'sequence');
+  if (row.stats.maxFreq >= 3) {
+    for (let index = 2; index < 8; index++) if (number[index] === row.stats.maxDigit) paint(index, 1, 'repeat');
+  }
+  if (row.prefixCount) {
+    paint(0, 2, 'prefix');
+    const prefix = number.slice(0, 2);
+    for (let index = 2; index < 7; index++) {
+      if (!number.startsWith(prefix, index)) continue;
+      paint(index++, 2, 'prefix');
+    }
+  }
+  const gaps = new Set();
+  let offset = 0;
+  for (const group of displayGroups(number).slice(0, -1)) {
+    offset += group.length;
+    gaps.add(offset);
+  }
+  return [...number].map((digit, index) => {
+    const text = digit;
+    const gap = gaps.has(index);
+    return (gap ? ' ' : '') +
+      (colors[index] ? '<span class="digit-' + colors[index] + '">' + text + '</span>' : text);
+  }).join('');
+}
+
+function availableInPatternOrder(numbers) {
+  const assessed = numbers.map(assessNumber);
+  const distinctive = row => row.stats.maxFreq >= 3 || row.prefixCount >= 2 || row.series.length >= 4 ||
+    row.structure || row.mirror || row.adjacentBlocks || row.pairSequence;
+  return assessed.sort((a,b) =>
+    Number(Boolean(distinctive(b))) - Number(Boolean(distinctive(a))) ||
+    b.base - a.base || b.stats.maxFreq - a.stats.maxFreq || a.number.localeCompare(b.number)
+  ).map(row => row.number);
+}
+
+function renderRows(){
+  const p = S.payload;
+  const alfa = availableInPatternOrder(p.numbers.alfa);
+  const touch = availableInPatternOrder(p.numbers.touch);
+  const rows = Math.max(alfa.length, touch.length);
+  const tbody = el('tbody');
+  const frag = document.createDocumentFragment();
+  renderTopNumbers(alfa, touch);
+  renderFavorites();
+  const winner = pickWinner(alfa, touch);
+
+  for (let i = 0; i < rows; i++) {
+    const a = alfa[i] || '';
+    const b = touch[i] || '';
+
+    const tr = document.createElement('tr');
+    if (winner && ((a === winner.n && winner.src === 'alfa') || (b === winner.n && winner.src === 'touch'))) tr.classList.add('win');
+    if ((a && S.newSet.has('alfa:' + a)) || (b && S.newSet.has('touch:' + b))) tr.classList.add('newrow');
+    if ((a && S.flashSet.has('alfa:' + a)) || (b && S.flashSet.has('touch:' + b))) tr.classList.add('fresh');
+
+    const tdA = document.createElement('td');
+    if (a) {
+      tdA.id = numberCellId('alfa', a);
+      tdA.innerHTML = availableNumberHTML(a);
+    }
+    const tdB = document.createElement('td');
+    if (b) {
+      tdB.id = numberCellId('touch', b);
+      tdB.innerHTML = availableNumberHTML(b);
+    }
+    tr.append(tdA, tdB);
+    frag.appendChild(tr);
+  }
+  tbody.replaceChildren(frag);
+  const shown = alfa.length + touch.length;
+  el('noMatches').hidden = shown > 0;
+}
+
+function setStatus(kind, text){
+  el('dot').className = 'dot' + (kind === 'ok' ? '' : ' ' + kind);
+  el('statusTxt').textContent = text;
+}
+
+const AUTO_UPDATE_MS = 30000;
+let nextUpdateAt;
+
+function renderCountdown() {
+  const seconds = Math.max(0, Math.ceil((nextUpdateAt - Date.now()) / 1000));
+  el('nextTxt').textContent = S.loading ? 'Checking availability…' : 'Next update in ' + seconds + 's';
+}
+
+function tickCountdown() {
+  if (!S.loading && Date.now() >= nextUpdateAt) load(true);
+  renderCountdown();
+}
+
+let category = 'regular';
+const INVENTORY_CACHE_KEY = 'alfa-touch-last-checked-v1';
+
+function emptyInventory() {
+  return { numbers: { alfa: [], touch: [] }, checkedAt: {}, totalsNew: { alfa: 0, touch: 0 }, recentAdditions: [] };
+}
+
+function readInventoryCache() {
+  const result = {};
+  if (localFile) return result;
+  try {
+    const saved = JSON.parse(localStorage.getItem(INVENTORY_CACHE_KEY) || '{}');
+    for (const kind of ['regular', 'chrome']) {
+      const old = saved?.[kind];
+      if (!old) continue;
+      const entry = emptyInventory();
+      for (const source of ['alfa', 'touch']) {
+        const numbers = old.numbers?.[source];
+        const time = old.checkedAt?.[source];
+        if (!time || !Number.isFinite(Date.parse(time)) || !Array.isArray(numbers) || !numbers.every(number => /^\d{8}$/.test(number))) continue;
+        entry.numbers[source] = numbers;
+        entry.checkedAt[source] = time;
+        entry.totalsNew[source] = Number(old.totalsNew?.[source]) || 0;
+      }
+      result[kind] = entry;
+    }
+  } catch {
+    // A live check can still run when storage is unavailable.
+  }
+  return result;
+}
+
+function saveInventoryCache() {
+  try {
+    const saved = {};
+    for (const [kind, value] of Object.entries(categoryPayloads)) {
+      saved[kind] = { numbers: value.numbers, checkedAt: value.checkedAt, totalsNew: value.totalsNew };
+    }
+    localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(saved));
+  } catch {
+    // Keep the current results in memory when storage is unavailable.
+  }
+}
+
+const categoryPayloads = localFile ? { regular: S.payload } : readInventoryCache();
+S.payload = categoryPayloads.regular || emptyInventory();
+
+function switchCategory(next) {
+  if (S.loading || category === next) return;
+  category = next;
+  el('regularTab').setAttribute('aria-pressed', next === 'regular');
+  el('chromeTab').setAttribute('aria-pressed', next === 'chrome');
+  S.payload = categoryPayloads[next] || emptyInventory();
+  render();
+  if (!localFile) load(true);
+  else if (next === 'chrome') {
+    el('errBox').textContent = 'Open the local service to load Chrome numbers.';
+    el('errBox').style.display = 'block';
+  }
+}
+
+async function load(force){
+  if (S.loading) return;
+  S.loading = true;
+  nextUpdateAt = Date.now() + AUTO_UPDATE_MS;
+  renderCountdown();
+  el('refreshBtn').disabled = true;
+  el('regularTab').disabled = el('chromeTab').disabled = true;
+  setStatus('loading', force ? 'Refreshing…' : 'Updating…');
+  try {
+    const r = await fetch(numbersEndpoint + '?category=' + category + (force ? '&force=1' : ''));
+    if (!r.ok) throw new Error('Local service HTTP ' + r.status);
+    const j = await r.json();
+    if (j.category !== category) {
+      setStatus('error', 'Old server');
+      const error = el('errBox');
+      error.textContent = 'This server cannot verify the selected category. Open the latest Open-in-Brave.cmd to switch to port 8101.';
+      error.style.display = 'block';
+      return;
+    }
+    for (const source of ['alfa', 'touch']) {
+      if (!j.checkedAt[source]) {
+        j.numbers[source] = S.payload.numbers[source];
+        j.checkedAt[source] = S.payload.checkedAt?.[source] || null;
+        j.totalsNew[source] = S.payload.totalsNew[source];
+      }
+    }
+    S.payload = j;
+    categoryPayloads[category] = j;
+    saveInventoryCache();
+    recordInventoryChanges(j);
+    const scrollY = window.scrollY;
+    render();
+    window.scrollTo(0, scrollY);
+    setStatus(j.ok ? 'ok' : 'error', j.ok ? 'Live' : 'Partial');
+  } catch (e) {
+    setStatus('error', 'Offline');
+    const errBox = el('errBox');
+    errBox.textContent = '⚠ Cannot reach the local numbers service. Is numbers-server.js still running?';
+    errBox.style.display = 'block';
+  } finally {
+    S.loading = false;
+    if (Date.now() >= nextUpdateAt) nextUpdateAt = Date.now() + AUTO_UPDATE_MS;
+    renderCountdown();
+    el('refreshBtn').disabled = false;
+    el('regularTab').disabled = el('chromeTab').disabled = false;
+
+  }
+}
+
+// ---- controls ----
+el('reviewNew').addEventListener('click', () => {
+  for (const key of pendingNew) if (key.startsWith(category + ':')) pendingNew.delete(key);
+  savePersonalLists();
+  renderRows();
+});
+
+el('regularTab').addEventListener('click', () => switchCategory('regular'));
+el('chromeTab').addEventListener('click', () => switchCategory('chrome'));
+el('refreshBtn').addEventListener('click', () => {
+  if (localFile) {
+    location.href = 'http://127.0.0.1:8101/';
+    return;
+  }
+  load(true);
+});
+
+render();
+if (localFile) {
+  setStatus('error', 'Local service required');
+  el('errBox').textContent = 'Open Open-in-Brave.cmd from this folder to start the live service.';
+  el('errBox').style.display = 'block';
+} else {
+  setStatus('ok', 'Ready to update');
+  nextUpdateAt = Date.now() + AUTO_UPDATE_MS;
+  renderCountdown();
+  setInterval(tickCountdown, 250);
+  if (new URLSearchParams(location.search).get('category') === 'chrome') switchCategory('chrome');
+  else load(true);
+}
+</script>
+</body>
+</html>
+
